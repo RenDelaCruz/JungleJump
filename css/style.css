@@ -1,0 +1,15 @@
+*, *:before, *:after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background-color: rgba(24, 44, 59, 1);
+}
+
+canvas {
+    margin: 50px auto;
+    display: block;
+    border-radius: 20px;
+    border: 3px solid white;
+}
