@@ -10,12 +10,12 @@ const assets = {
     { name: "bomb", path: "assets/bomb.png" },
   ],
   sprites: [
-    { name: "hero-idle", path: "assets/player-sprites/idle.png", frameInfo: { frameWidth: 21, frameHeight: 35 } },
-    { name: "hero-run", path: "assets/player-sprites/run.png", frameInfo: { frameWidth: 23, frameHeight: 34 } },
-    { name: "hero-jump", path: "assets/player-sprites/jump.png", frameInfo: { frameWidth: 19, frameHeight: 36 } },
-    { name: "hero-fall", path: "assets/player-sprites/midair.png", frameInfo: { frameWidth: 22, frameHeight: 37 } },
-    { name: "hero-land", path: "assets/player-sprites/landing.png", frameInfo: { frameWidth: 22, frameHeight: 37 } },
-    { name: "coin", path: "assets/coin.png", frameInfo: { frameWidth: 16, frameHeight: 16 } }
+    { name: "hero-idle", path: "assets/sprites/idle.png", frameInfo: { frameWidth: 21, frameHeight: 35 } },
+    { name: "hero-run", path: "assets/sprites/run.png", frameInfo: { frameWidth: 23, frameHeight: 34 } },
+    { name: "hero-jump", path: "assets/sprites/jump.png", frameInfo: { frameWidth: 19, frameHeight: 36 } },
+    { name: "hero-fall", path: "assets/sprites/midair.png", frameInfo: { frameWidth: 22, frameHeight: 37 } },
+    { name: "hero-land", path: "assets/sprites/landing.png", frameInfo: { frameWidth: 22, frameHeight: 37 } },
+    { name: "coin", path: "assets/sprites/coin.png", frameInfo: { frameWidth: 16, frameHeight: 16 } }
   ]
 }
 
@@ -46,6 +46,9 @@ const config = {
     preload: preload,
     create: create,
     update: update,
+  },
+  audio: {
+    disableWebAudio: false
   }
 };
 
@@ -57,6 +60,7 @@ let cursors;
 let score = 0;
 let gameOver = false;
 let scoreText;
+let music;
 
 const game = new Phaser.Game(config);
 
@@ -73,6 +77,9 @@ function preload() {
     const { name, path, frameInfo } = sprite;
     this.load.spritesheet(name, path, frameInfo);
   }
+
+  // Load audio
+  this.load.audio("theme", ["assets/theme.mp3"]);
 }
 
 let backgrounds = [];
@@ -82,6 +89,11 @@ function create() {
   const backgroundNames = assets.images
     .filter(image => image.name.startsWith("forest-"))
     .map(image => image.name);
+
+  // Add music
+  music = this.sound.add("theme");
+  music.muted = true;
+  music.play();
 
   for (let backgroundName of backgroundNames) {
     backgrounds.push(
@@ -97,9 +109,15 @@ function create() {
   platforms.create(50, 250, "ground");
   platforms.create(750, 220, "ground");
   platforms.create(1200, 220, "ground");
-  platforms.create(400, 568, "ground")
-    .setScale(2)
-    .refreshBody();
+
+  let platformStep = 200;
+  for (let index = 0; index < screen.bounds; index += platformStep) {
+    console.log(index * platformStep)
+    platforms.create(index, 540, "ground")
+      .setOrigin(0)
+      .setScale(2)
+      .refreshBody();
+  }
 
   // Create player
   player = this.physics.add
@@ -225,7 +243,7 @@ function collectCoin(player, coin) {
   scoreText.setText("Score: " + score);
 
   if (coins.countActive(true) === 0) {
-    // Spawn new coins
+    // Spawn new coins once all of them are collected
     coins.children.iterate(function (child) {
       child.enableBody(true, child.x, 0, true, true);
     });
@@ -251,5 +269,6 @@ function hitBomb(player, bomb) {
   this.physics.pause();
   player.setTint(0xff0000);
   player.anims.play("falling");
+  music.stop();
   gameOver = true;
 }
