@@ -18,7 +18,9 @@ Open the browser at that port and start playing.
 ## Instructions
 - Move with arrow keys
 - Jump or double jump with space
-- Collect coins and don't get hit by the bombs.
+- Run holding shift
+
+Collect coins and don't get hit by the bombs.
 
 > More bombs appear the higher your score! Be careful.
 
