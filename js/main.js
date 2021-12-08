@@ -1,23 +1,56 @@
-let config = {
+const screen = { width: 1000, height: 600, bounds: 3000 };
+
+const assets = {
+  images: [
+    { name: "forest-1", path: "assets/backgrounds/forest-1.png" },
+    { name: "forest-2", path: "assets/backgrounds/forest-2.png" },
+    { name: "forest-3", path: "assets/backgrounds/forest-3.png" },
+    { name: "forest-4", path: "assets/backgrounds/forest-4.png" },
+    { name: "ground", path: "assets/platform.png" },
+    { name: "bomb", path: "assets/bomb.png" },
+  ],
+  sprites: [
+    { name: "hero-idle", path: "assets/player-sprites/idle.png", frameInfo: { frameWidth: 21, frameHeight: 35 } },
+    { name: "hero-run", path: "assets/player-sprites/run.png", frameInfo: { frameWidth: 23, frameHeight: 34 } },
+    { name: "hero-jump", path: "assets/player-sprites/jump.png", frameInfo: { frameWidth: 19, frameHeight: 36 } },
+    { name: "hero-fall", path: "assets/player-sprites/midair.png", frameInfo: { frameWidth: 22, frameHeight: 37 } },
+    { name: "hero-land", path: "assets/player-sprites/landing.png", frameInfo: { frameWidth: 22, frameHeight: 37 } },
+    { name: "coin", path: "assets/coin.png", frameInfo: { frameWidth: 16, frameHeight: 16 } }
+  ]
+}
+
+const animations = [
+  { key: "idle", spriteName: "hero-idle", frameRate: 10 },
+  { key: "walking", spriteName: "hero-run", frameRate: 10 },
+  { key: "running", spriteName: "hero-run", frameRate: 15 },
+  { key: "jumping", spriteName: "hero-jump" },
+  { key: "falling", spriteName: "hero-fall", frameRate: 10 },
+  { key: "landing", spriteName: "hero-land" },
+  { key: "coin-spin", spriteName: "coin", frameRate: 10, repeat: -1 },
+];
+
+const config = {
   type: Phaser.AUTO,
-  width: 800,
-  height: 600,
+  width: screen.width,
+  height: screen.height,
+  backgroundColor: "#A5D9C4",
+  pixelArt: true,
   physics: {
     default: "arcade",
     arcade: {
-      gravity: { y: 300 },
+      gravity: { y: 600 },
       debug: false
     }
   },
   scene: {
     preload: preload,
     create: create,
-    update: update
+    update: update,
   }
 };
 
 let player;
-let stars;
+let coins;
 let bombs;
 let platforms;
 let cursors;
@@ -25,92 +58,110 @@ let score = 0;
 let gameOver = false;
 let scoreText;
 
-let game = new Phaser.Game(config);
+const game = new Phaser.Game(config);
 
 function preload() {
-  this.load.image("sky", "assets/sky.png");
-  this.load.image("ground", "assets/platform.png");
-  this.load.image("star", "assets/star.png");
-  this.load.image("bomb", "assets/bomb.png");
-  this.load.spritesheet("dude", "assets/dude.png", { frameWidth: 32, frameHeight: 48 });
+  const { images, sprites } = assets;
+
+  // Load images
+  for (let image of images) {
+    this.load.image(image.name, image.path)
+  }
+
+  // Load sprites
+  for (let sprite of sprites) {
+    const { name, path, frameInfo } = sprite;
+    this.load.spritesheet(name, path, frameInfo);
+  }
 }
 
+let backgrounds = [];
+
 function create() {
-  //  A simple background for our game
-  this.add.image(400, 300, "sky");
+  // Create parallax background
+  const backgroundNames = assets.images
+    .filter(image => image.name.startsWith("forest-"))
+    .map(image => image.name);
 
-  //  The platforms group contains the ground and the 2 ledges we can jump on
+  for (let backgroundName of backgroundNames) {
+    backgrounds.push(
+      this.add.tileSprite(screen.width / 2, screen.height / 2, 384, 216, backgroundName)
+        .setScrollFactor(0, 1)
+        .setScale(screen.height / 200)
+    );
+  }
+
+  // Create platforms
   platforms = this.physics.add.staticGroup();
-
-  //  Here we create the ground.
-  //  Scale it to fit the width of the game (the original sprite is 400x32 in size)
-  platforms.create(400, 568, "ground").setScale(2).refreshBody();
-
-  //  Now let"s create some ledges
   platforms.create(600, 400, "ground");
   platforms.create(50, 250, "ground");
   platforms.create(750, 220, "ground");
+  platforms.create(1200, 220, "ground");
+  platforms.create(400, 568, "ground")
+    .setScale(2)
+    .refreshBody();
 
-  // The player and its settings
-  player = this.physics.add.sprite(100, 450, "dude");
+  // Create player
+  player = this.physics.add
+    .sprite(300, 450, "hero-idle")
+    .setScale(3)
+    .setBounce(0.2)
+    .setCollideWorldBounds(true);
 
-  //  Player physics properties. Give the little guy a slight bounce.
-  player.setBounce(0.2);
-  player.setCollideWorldBounds(true);
+  // Set camera
+  this.cameras.main.startFollow(player);
+  this.cameras.main.setBounds(0, 0, screen.bounds, screen.height);
+  this.physics.world.setBounds(0, 0, screen.bounds, screen.height);
 
-  //  Our player animations, turning, walking left and walking right.
-  this.anims.create({
-    key: "left",
-    frames: this.anims.generateFrameNumbers("dude", { start: 0, end: 3 }),
-    frameRate: 10,
-    repeat: -1
-  });
-
-  this.anims.create({
-    key: "turn",
-    frames: [{ key: "dude", frame: 4 }],
-    frameRate: 20
-  });
-
-  this.anims.create({
-    key: "right",
-    frames: this.anims.generateFrameNumbers("dude", { start: 5, end: 8 }),
-    frameRate: 10,
-    repeat: -1
-  });
-
-  //  Input Events
   cursors = this.input.keyboard.createCursorKeys();
-  // wasd = this.input.keyboard.addKeys({ up: "W", left: "A", down: "S", right: "D" });
+  scoreText = this.add.text(16, 16, "Score: 0", { fontSize: "32px", fill: "#000" })
+    .setScrollFactor(0);
 
-  //  Some stars to collect, 12 in total, evenly spaced 70 pixels apart along the x axis
-  stars = this.physics.add.group({
-    key: "star",
-    repeat: 11,
-    setXY: { x: 12, y: 0, stepX: 70 }
+  // Set sprite animations
+  for (let animation of animations) {
+    const { spriteName, ...animationConfig } = animation;
+    this.anims.create({
+      ...animationConfig,
+      frames: this.anims.generateFrameNumbers(spriteName),
+    });
+  }
+
+  let step = 70;
+  coins = this.physics.add.group({
+    key: "coin",
+    repeat: Math.floor(screen.bounds / step),
+    setXY: { x: 20, y: 0, stepX: step }
   });
 
-  stars.children.iterate(function (child) {
-
-    //  Give each star a slightly different bounce
-    child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
-
+  coins.children.iterate(function (child) {
+    child.anims.play("coin-spin")
+      .setBounceY(Phaser.Math.FloatBetween(0.4, 0.8))
+      .setCollideWorldBounds(true)
+      .setScale(1.75);
   });
 
   bombs = this.physics.add.group();
 
-  //  The score
-  scoreText = this.add.text(16, 16, "score: 0", { fontSize: "32px", fill: "#000" });
-
-  //  Collide the player and the stars with the platforms
   this.physics.add.collider(player, platforms);
-  this.physics.add.collider(stars, platforms);
+  this.physics.add.collider(coins, platforms);
   this.physics.add.collider(bombs, platforms);
 
-  //  Checks to see if the player overlaps with any of the stars, if he does call the collectStar function
-  this.physics.add.overlap(player, stars, collectStar, null, this);
-
+  this.physics.add.overlap(player, coins, collectCoin, null, this);
   this.physics.add.collider(player, bombs, hitBomb, null, this);
+}
+
+let pressedJump;
+let canDoubleJump;
+
+function move(flipped, velocity, animationName) {
+  if (flipped != null) {
+    player.flipX = flipped;
+  }
+  player.setVelocityX(velocity);
+
+  if (player.body.onFloor()) {
+    player.anims.play(animationName, true);
+  }
 }
 
 function update() {
@@ -118,59 +169,87 @@ function update() {
     return;
   }
 
+  // Horizontal movement
   if (cursors.left.isDown) {
-    player.setVelocityX(-160);
-
-    player.anims.play("left", true);
+    if (cursors.shift.isDown) {
+      move(true, -450, "running")
+    } else {
+      move(true, -300, "walking")
+    }
+  } else if (cursors.right.isDown) {
+    if (cursors.shift.isDown) {
+      move(false, 450, "running")
+    } else {
+      move(false, 300, "walking")
+    }
+  } else if (player.body.onFloor()) {
+    move(null, 0, "idle");
   }
-  else if (cursors.right.isDown) {
-    player.setVelocityX(160);
 
-    player.anims.play("right", true);
+  pressedJump = Phaser.Input.Keyboard.JustDown(cursors.space);
+
+  // Jumping movement
+  if (pressedJump) {
+    if (player.body.onFloor()) {
+      canDoubleJump = true;
+      player.body.setVelocityY(-350);
+    } else if (canDoubleJump) {
+      canDoubleJump = false;
+      player.body.setVelocityY(-350);
+    }
   }
-  else {
-    player.setVelocityX(0);
 
-    player.anims.play("turn");
+  // Airborne movement
+  if (!player.body.onFloor()) {
+    if (player.body.velocity.y > 0) {
+      player.anims.play("falling", true);
+
+      if (cursors.down.isDown) {
+        player.body.setVelocityY(600);
+      }
+    } else {
+      player.anims.play("jumping", true);
+    }
   }
 
-  if (player.body.touching.down && cursors.space.isDown) {
-    player.setVelocityY(-330);
+  // Move parallax background
+  for (let [index, background] of backgrounds.entries()) {
+    background.setTilePosition(this.cameras.main.scrollX * (index + 0.5) * 0.1);
   }
 }
 
-function collectStar(player, star) {
-  star.disableBody(true, true);
+function collectCoin(player, coin) {
+  coin.disableBody(true, true);
 
-  //  Add and update the score
   score += 10;
   scoreText.setText("Score: " + score);
 
-  if (stars.countActive(true) === 0) {
-    //  A new batch of stars to collect
-    stars.children.iterate(function (child) {
-
+  if (coins.countActive(true) === 0) {
+    // Spawn new coins
+    coins.children.iterate(function (child) {
       child.enableBody(true, child.x, 0, true, true);
-
     });
+  }
 
-    let x = (player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0, 400);
+  if (score % 100 == 0) {
+    let spawnLocation = Phaser.Math.Between(player.x - 200, player.x + 200)
+    let numberOfBombs = Math.floor(score / 100);
+    while (--numberOfBombs > 0) {
+      let bombSize = Phaser.Math.Between(2, 4)
 
-    let bomb = bombs.create(x, 16, "bomb");
-    bomb.setBounce(1);
-    bomb.setCollideWorldBounds(true);
-    bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
-    bomb.allowGravity = false;
-
+      bombs.create(spawnLocation, 16, "bomb")
+        .setBounce(1)
+        .setScale(bombSize)
+        .setCollideWorldBounds(true)
+        .setVelocity(Phaser.Math.Between(-200, 200), 20)
+        .allowGravity = false;
+    }
   }
 }
 
 function hitBomb(player, bomb) {
   this.physics.pause();
-
   player.setTint(0xff0000);
-
-  player.anims.play("turn");
-
+  player.anims.play("falling");
   gameOver = true;
 }
