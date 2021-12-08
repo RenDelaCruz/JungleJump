@@ -28,7 +28,7 @@ Open the browser at that port and start playing.
 Use `Ctrl+C` in the terminal to close the server.
 
 
-### Credits
+## Credits
 
 - [Character and jungle sprites by Jesse Munguia](https://jesse-m.itch.io/jungle-pack)
 - [Coin sprites by La Red Games](https://laredgames.itch.io/gems-coins-free)
