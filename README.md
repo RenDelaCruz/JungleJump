@@ -1,6 +1,8 @@
+![](assets/title.png)
+
 # Jungle Jump
 
-A platformer made with the Phaser 3 engine!
+A platformer made with the Phaser 3 game engine!
 
 ![Jungle Jump Sample](assets/sample.gif)
 
