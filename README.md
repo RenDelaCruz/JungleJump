@@ -6,14 +6,26 @@ A platformer made with the Phaser 3 engine!
 
 ## Startup
 
-Clone this repository, then `cd` into the directory.\
+Clone this repository, then `cd` into the directory.
 Start the server with:
 
-```python
-python -m server
+```shell
+$ python -m server
 ```
 
-Open the browser at that port and start playing!
+Open the browser at that port and start playing.
+
+## Instructions
+- Move with arrow keys
+- Jump or double jump with space
+- Collect coins and don't get hit by the bombs.
+
+> More bombs appear the higher your score! Be careful.
+
+
+## Shutdown
+
+Use `Ctrl+C` in the terminal to close the server.
 
 
 ### Credits
