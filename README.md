@@ -1,6 +1,6 @@
 # Jungle Jump
 
-A platformer made with the Phaser 3 engine!
+A platformer made with the Phaser 3 game engine!
 
 ![Jungle Jump Sample](assets/sample.gif)
 
@@ -10,7 +10,7 @@ Clone this repository, then `cd` into the directory.
 Start the server with:
 
 ```shell
-$ python -m server
+$ python3 -m server
 ```
 
 Open the browser at that port and start playing.
