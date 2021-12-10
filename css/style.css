@@ -4,22 +4,39 @@
 
 body {
     margin: 0;
-    background-color: rgba(24, 44, 59, 1);
-    background-image: url("../assets/leaves.png");
-    background-repeat: repeat-y;
-    background-position: center;
-    background-size: 2100px auto;
+    background: rgb(24, 44, 59);
+    /* background: linear-gradient(0deg, rgba(24, 44, 59, 1) 70%, rgba(28, 144, 145, 1) 100%); */
+    /* background-color: rgba(24, 44, 59, 1); */
+    /* background-image: url("../assets/leaf_background.png");
+    background-repeat: repeat; */
+    /* background-position: center;
+    background-size: 2100px auto; */
+    /* padding: 100px 0; */
 }
 
 canvas {
-    margin: 30px auto;
+    height: 80vh;
+    width: auto;
     display: block;
-    border-radius: 20px;
-    border: 5px solid #40A43F;
+    margin: 10vh auto;
+    /* padding: 20vh 0; */
+    /* box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2); */
+    /* margin: 30px auto; */
+    /* display: block; */
+    border-radius: 6px;
+    /* border: 5px solid #40A43F; */
 }
 
 .title {
-    margin: 50px auto;
-    display: flex;
-    justify-content: center;
+    top: 4vh;
+    position: absolute;
+    left: 57vw;
+
+    /* left: 70%;
+    transform: translate(-70%, 0); */
+}
+
+.title img {
+    width: auto;
+    height: 4vh;
 }
