@@ -25,9 +25,12 @@ const config = {
 
 let player;
 let fistBox;
-let platforms;
 let coins;
 let bombs;
+
+let map;
+let worldAbove;
+let worldBehind;
 
 let cursors;
 let score = 0;
@@ -45,7 +48,7 @@ function preload() {
 
     // Load images
     for (let image of images) {
-        this.load.image(image.name, image.path)
+        this.load.image(image.name, image.path);
     }
 
     // Load sprites
@@ -58,6 +61,10 @@ function preload() {
     for (let sound of sounds) {
         this.load.audio(sound.name, sound.paths);
     }
+
+    // Load tiles
+    this.load.image("tiles", "assets/tiles/tileSet.png");
+    this.load.tilemapTiledJSON("map", "assets/tiles/tileMap.json");
 }
 
 let backgrounds = [];
@@ -85,20 +92,34 @@ function create() {
 
     gameOverTheme = this.sound.add("game-over-theme");
 
-    // Create platforms
-    platforms = this.physics.add.staticGroup();
-    platforms.create(600, 400, "ground");
-    platforms.create(50, 250, "ground");
-    platforms.create(750, 220, "ground");
-    platforms.create(1200, 220, "ground");
+    // Make platforms
+    map = this.make.tilemap({ key: "map" });
+    const tileset = map.addTilesetImage("jungle tileset2", "tiles");
+    worldBehind = map.createStaticLayer("BackGround", tileset, 0, 0);
+    worldAbove = map.createStaticLayer("MidGround", tileset, 0, 0);
+    worldAbove.setCollisionByProperty({ collides: true });
 
-    let platformStep = 200;
-    for (let index = 0; index < screen.bounds; index += platformStep) {
-        platforms.create(index, 540, "ground")
-            .setOrigin(0)
-            .setScale(2)
-            .refreshBody();
-    }
+    // const debugGraphics = this.add.graphics().setAlpha(0.75);
+    // worldAbove.renderDebug(debugGraphics, {
+    //     tileColor: null, // Color of non-colliding tiles
+    //     collidingTileColor: new Phaser.Display.Color(243, 134, 48, 255), // Color of colliding tiles
+    //     faceColor: new Phaser.Display.Color(40, 39, 37, 255) // Color of colliding face edges
+    // });
+
+    // Create platforms
+    // platforms = this.physics.add.staticGroup();
+    // platforms.create(600, 400, "ground");
+    // platforms.create(50, 250, "ground");
+    // platforms.create(750, 220, "ground");
+    // platforms.create(1200, 220, "ground");
+
+    // let platformStep = 200;
+    // for (let index = 0; index < screen.bounds; index += platformStep) {
+    //     platforms.create(index, 540, "ground")
+    //         .setOrigin(0)
+    //         .setScale(2)
+    //         .refreshBody();
+    // }
 
     // Create player
     player = this.physics.add
@@ -108,9 +129,8 @@ function create() {
         .setCollideWorldBounds(true);
 
     // Player fist hitbox
-    fistBox = this.physics.add
-        .sprite(300, 450)
-    fistBox.body.setSize(player.displayWidth * 1.3, player.displayHeight / 5, true);
+    fistBox = this.physics.add.sprite();
+    fistBox.body.setSize(player.displayWidth * 1.3, player.displayHeight / 6, true);
     fistBox.body.allowGravity = false;
 
     // Set camera
@@ -148,18 +168,19 @@ function create() {
 
     bombs = this.physics.add.group();
 
-    this.physics.add.collider(coins, platforms);
-    this.physics.add.collider(bombs, platforms);
+    this.physics.add.collider(coins, worldAbove);
+    this.physics.add.collider(bombs, worldAbove);
     this.physics.add.collider(bombs, bombs);
-    this.physics.add.collider(player, platforms);
+    this.physics.add.collider(player, worldAbove);
 
-    this.physics.add.collider(fistBox, platforms, grabLedge, inTheAir, this);
+    this.physics.add.collider(fistBox, worldAbove, grabLedge, inTheAir, this);
     this.physics.add.overlap(player, coins, collectCoin, null, this);
     this.physics.add.collider(player, bombs, hitBomb, null, this);
 }
 
 
 let pressedJump;
+let didGrab;
 let canGrabLedge = true;
 
 function inTheAir() {
@@ -182,21 +203,22 @@ function update() {
         return;
     }
 
+    fistBox.body.velocity.copy(player.body.velocity);
     fistBox.x = player.x;
-    fistBox.y = player.y - 40;
+    fistBox.y = player.y - 45;
 
     // Horizontal movement
     if (cursors.left.isDown) {
         if (cursors.shift.isDown) {
-            move(true, -470, "running")
+            move(true, -470, "running");
         } else {
-            move(true, -300, "walking")
+            move(true, -300, "walking");
         }
     } else if (cursors.right.isDown) {
         if (cursors.shift.isDown) {
-            move(false, 470, "running")
+            move(false, 470, "running");
         } else {
-            move(false, 300, "walking")
+            move(false, 300, "walking");
         }
     } else if (player.body.onFloor()) {
         move(null, 0, "idle");
@@ -206,7 +228,8 @@ function update() {
 
     // Jumping movement
     if (pressedJump) {
-        if (player.body.onFloor() || hangingOnLedge()) {
+        if (player.body.onFloor() || (hangingOnLedge() && didGrab)) {
+            didGrab = false;
             player.anims.play("jumping", true);
             player.body.setVelocityY(-600);
         }
@@ -214,20 +237,24 @@ function update() {
 
     // Airborne movement
     if (!player.body.onFloor() && !touchingLeftRight()) {
+        canGrabLedge = true;
         if (player.body.velocity.y > 0) {
-            canGrabLedge = true;
             if (player.body.velocity.y < 500) {
                 player.anims.play("landing", true);
             } else {
                 player.anims.play("falling", true);
             }
 
-            if (cursors.down.isDown) {
-                player.body.setVelocityY(600);
-            }
+            // if (cursors.down.isDown) {
+            //     player.body.setVelocityY(600);
+            // }
         } else {
             player.anims.play("jumping", true);
         }
+    }
+
+    if (player.body.onFloor()) {
+        player.body.offset.y = -2;
     }
 
     if (!hangingOnLedge() || pressedJump) {
@@ -236,7 +263,7 @@ function update() {
 
     // Move parallax background
     for (let [index, background] of backgrounds.entries()) {
-        background.setTilePosition(this.cameras.main.scrollX * (index + 0.5) * 0.1);
+        background.setTilePosition(this.cameras.main.scrollX * (index) * 0.01);
     }
 }
 
@@ -245,21 +272,22 @@ function holdingLeftRight() {
 }
 
 function touchingLeftRight() {
-    return player.body.touching.left || player.body.touching.right;
+    return player.body.blocked.left || player.body.blocked.right;
 }
 
 function hangingOnLedge() {
     return holdingLeftRight() && touchingLeftRight();
 }
 
-function grabLedge(fist, platform) {
-    if (hangingOnLedge()) {
-        if (canGrabLedge) {
-            canGrabLedge = false;
-            player.setVelocityY(0);
-            player.body.allowGravity = false;
-            player.anims.play("grabbing", true);
-        }
+function grabLedge() {
+    if (canGrabLedge) {
+        player.anims.play("grabbing", true);
+        player.setVelocityY(0);
+        player.body.allowGravity = false;
+        canGrabLedge = false;
+        didGrab = true;
+    } else {
+        player.body.allowGravity = true;
     }
 }
 
@@ -277,10 +305,10 @@ function collectCoin(player, coin) {
     }
 
     if (score % 100 == 0) {
-        let spawnLocation = Phaser.Math.Between(player.x - 200, player.x + 200)
+        let spawnLocation = Phaser.Math.Between(player.x - 200, player.x + 200);
         let numberOfBombs = Math.floor(score / 100);
         while (--numberOfBombs > 0) {
-            const bombSize = Phaser.Math.Between(2, 4)
+            const bombSize = Phaser.Math.Between(2, 4);
             const angularDirection = Math.random() < 0.5 ? 1 : -1;
 
             const bomb = bombs.create(spawnLocation, 16, "bomb")
@@ -296,9 +324,7 @@ function collectCoin(player, coin) {
 }
 
 function hitBomb(player, bomb) {
-    player.setTint(0xff0000);
-    player.anims.play("falling");
-    this.cameras.main.shake(100, 0.005);
+    // this.cameras.main.shake(100, 0.005);
 
     mainTheme.stop();
 
@@ -306,16 +332,33 @@ function hitBomb(player, bomb) {
         deathBit.play();
         setTimeout(() => {
             gameOverTheme.play();
-            this.cameras.main.fadeOut(13200, 0, 0, 0);
+            this.cameras.main.fadeOut(13400, 0, 0, 0);
+            this.cameras.main.zoomTo(3, 13400);
             setTimeout(() => {
                 this.physics.pause();
             }, 12700);
         }, 4500);
     }
 
+    // bounceDeath();
+    groundDeath();
+
+    gameOver = true;
+}
+
+function bounceDeath() {
+    player.setTint(0xff0000);
     player.body.angularVelocity = 200;
     player.allowGravity = false;
     player.setBounce(1);
+    player.anims.play("falling");
+}
 
-    gameOver = true;
+function groundDeath() {
+    player.anims.play("grabbing");
+    player.body.setSize(player.height, player.width * 0.8, true);
+    player.body.setOffset(-12, 8);
+    player.body.setDrag(50);
+    player.flipX = false;
+    player.angle = 90;
 }
